@@ -13,6 +13,7 @@ public:
     std::vector<double> myVert;
     std::vector<double> myHorz;
     std::vector<std::pair<int, int>> myForbidden;
+    std::pair<int, int> myStartCell;
 
     void setVert(const std::vector<double> &v);
 
@@ -21,6 +22,10 @@ public:
     void setForbid(const std::vector<std::pair<int, int>> &f)
     {
         myForbidden = f;
+    }
+    void setStartCell(const std::pair<int, int> &s)
+    {
+        myStartCell = s;
     }
     void draw(wex::shapes &S);
 };
@@ -35,7 +40,8 @@ public:
     {
         myGrid.setVert({0.5, 1.3, 0.9});
         myGrid.setHorz({2.75, 1, 2});
-        myGrid.setForbid({{1,1}});
+        myGrid.setForbid({{1, 1}});
+        myGrid.setStartCell({2, 2});
 
         fm.events().draw(
             [&](PAINTSTRUCT &ps)
@@ -87,13 +93,16 @@ void cGrid::draw(wex::shapes &S)
     }
     for (auto &f : myForbidden)
     {
-        int l = scale * myVert[f.first-1];
-        int t = scale * myHorz[f.second-1];
+        int l = scale * myVert[f.first - 1];
+        int t = scale * myHorz[f.second - 1];
         int r = scale * myVert[f.first];
         int b = scale * myHorz[f.second];
-        S.line( { l, t, r, b } );
-        S.line( { r, t, l, b});
+        S.line({l, t, r, b});
+        S.line({r, t, l, b});
     }
+    S.text("S",
+           {(int)scale * myVert[myStartCell.first-1] + 3,
+            (int)scale * myHorz[myStartCell.second-1] + 3});
 }
 
 main()
