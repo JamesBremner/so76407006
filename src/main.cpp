@@ -16,6 +16,7 @@ public:
     std::vector<std::pair<int, int>> myForbidden;
     std::pair<int, int> myStartCell;
     std::pair<double, double> myMaxCombSize;
+    std::vector<std::vector<std::pair<int, int>>> myListComb;
 
     void setVert(const std::vector<double> &v);
 
@@ -33,6 +34,9 @@ public:
     {
         myMaxCombSize = sz;
     }
+
+    void EnumerateCombinations();
+
     void draw(wex::shapes &S);
 
     /// @brief true if in completely inside out
@@ -67,7 +71,9 @@ public:
         myGrid.setHorz({0.5, 1, 1.5, 2, 2.5, 3, 2.5, 2});
         myGrid.setForbid({{5, 2}});
         myGrid.setStartCell({4, 4});
-        myGrid.setMaxCombSize({5, 6});
+        myGrid.setMaxCombSize({6, 7});
+
+        myGrid.EnumerateCombinations();
 
         fm.events().draw(
             [&](PAINTSTRUCT &ps)
@@ -118,9 +124,6 @@ void cGrid::draw(wex::shapes &S)
         S.line({(int)(scale * v), 0, (int)(scale * v), (int)(scale * myHorz.back())});
     }
 
-    S.color(0x0000FF);
-    drawRectangle(S, scale, rectDim(myStartCell));
-
     for (auto &f : myForbidden)
     {
         auto fDim = rectDim(f);
@@ -130,35 +133,77 @@ void cGrid::draw(wex::shapes &S)
         S.line({(int)(scale * fDim[2]), (int)(scale * fDim[1]),
                 (int)(scale * fDim[0]), (int)(scale * fDim[3])});
     }
-    // S.text("S",
-    //        {(int)(scale * myVert[myStartCell.first - 1] + 3),
-    //         (int)(scale * myHorz[myStartCell.second - 1] + 3)});
 
     // The SR rectangle
     auto startCellDim = rectDim(myStartCell);
-    std::pair<double, double> startCellCenter;
-    startCellCenter.first = 0.5 * (startCellDim[0] + startCellDim[2]);
-    startCellCenter.second = 0.5 * (startCellDim[1] + startCellDim[3]);
-    rect_ltrb_t SR(4);
-    SR[0] = startCellCenter.first - myMaxCombSize.first;
-    SR[1] = startCellCenter.second - myMaxCombSize.second;
-    SR[2] = SR[0] + 2 * myMaxCombSize.first;
-    SR[3] = SR[1] + 2 * myMaxCombSize.second;
-    S.color(0x0000FF);
-    drawRectangle(S, scale, SR);
+    S.text("S",
+           {(int)(scale * startCellDim[0] + 5),
+            (int)(scale * startCellDim[1] + 5)});
+    // std::pair<double, double> startCellCenter;
+    // startCellCenter.first = 0.5 * (startCellDim[0] + startCellDim[2]);
+    // startCellCenter.second = 0.5 * (startCellDim[1] + startCellDim[3]);
+    // rect_ltrb_t SR(4);
+    // SR[0] = startCellCenter.first - myMaxCombSize.first;
+    // SR[1] = startCellCenter.second - myMaxCombSize.second;
+    // SR[2] = SR[0] + 2 * myMaxCombSize.first;
+    // SR[3] = SR[1] + 2 * myMaxCombSize.second;
+    // S.color(0x0000FF);
+    // drawRectangle(S, scale, SR);
 
-    // mark cells completely inside the SR rectangle and not forbidden
-    for (int row = 0; row < myHorz.size(); row++)
-        for (int col = 0; col < myHorz.size(); col++)
+    S.color(0xFF0000);
+    int icomb = 0;
+    for (auto &c : myListComb[icomb])
+    {
+        drawRectangle(S, scale, rectDim(c));
+    }
+}
+
+void cGrid::EnumerateCombinations()
+{
+    auto startCellDim = rectDim(myStartCell);
+
+    // loop E over cells
+    for (int rowE = 0; rowE < myHorz.size(); rowE++)
+    {
+        for (int colE = 0; colE < myVert.size(); colE++)
         {
-            auto cell = rectDim(std::make_pair(col, row));
-            if (isInside(cell, SR) && (!isForbidden(std::make_pair(col, row))))
-            {
+            // create rectangle E of maximum combination size with E cell at top left
+            auto Ecell = rectDim(std::make_pair(colE, rowE));
+            rect_ltrb_t E{
+                Ecell[0], Ecell[1],
+                Ecell[0] + myMaxCombSize.first, Ecell[1] + myMaxCombSize.second};
 
-                S.text("M",
-                       {(int)(scale * cell[0]) + 5, (int)(scale * cell[1]) + 5});
-            }
+            // check that E includes the start cell
+            if (!isInside(startCellDim, E))
+                continue;
+
+            std::vector<std::pair<int, int>> comb;
+
+            // loop over cells
+            for (int row = 0; row < myHorz.size(); row++)
+                for (int col = 0; col < myHorz.size(); col++)
+                {
+                    // if cell completely inside E and valid
+                    auto cell = rectDim(std::make_pair(col, row));
+                    if (isInside(cell, E) && (!isForbidden(std::make_pair(col, row))))
+                    {
+                        // add to current combination
+                        comb.push_back(std::make_pair(col, row));
+                    }
+                }
+            // add current combination to list
+            myListComb.push_back(comb);
         }
+    }
+    std::cout << myListComb.size() << " valid cell combinations found\n";
+    for (auto &comb : myListComb)
+    {
+        for (auto &loc : comb)
+        {
+            std::cout << loc.first << " " << loc.second << ", ";
+        }
+        std::cout << "\n";
+    }
 }
 
 void cGrid::drawRectangle(
@@ -181,14 +226,10 @@ bool cGrid::isInside(
     rect_ltrb_t in,
     rect_ltrb_t out)
 {
-    std::cout << in[0] << " " << in[1] << " " << in[2] << " " << in[3] << "\n";
-    std::cout << out[0] << " " << out[1] << " " << out[2] << " " << out[3] << "\n";
-    bool ret = (out[0] <= in[0] && in[0] <= out[2] &&
-                out[1] <= in[1] && in[1] <= out[3] &&
-                out[0] <= in[2] && in[2] <= out[2] &&
-                out[1] <= in[3] && in[3] <= out[3]);
-    std::cout << ret << "\n";
-    return ret;
+    return (out[0] <= in[0] && in[0] <= out[2] &&
+            out[1] <= in[1] && in[1] <= out[3] &&
+            out[0] <= in[2] && in[2] <= out[2] &&
+            out[1] <= in[3] && in[3] <= out[3]);
 }
 
 bool cGrid::isForbidden(
