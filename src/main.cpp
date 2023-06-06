@@ -10,34 +10,60 @@
 class cGrid
 {
 public:
-    typedef std::vector<double> rect_ltrb_t;
-    std::vector<double> myVert;
-    std::vector<double> myHorz;
-    std::vector<std::pair<int, int>> myForbidden;
-    std::pair<int, int> myStartCell;
-    std::pair<double, double> myMaxCombSize;
-    std::vector<std::vector<std::pair<int, int>>> myListComb;
-
+    /// @brief set spaciong of vertical grid lines
+    /// @param v vector of distances between vertical grid lines
     void setVert(const std::vector<double> &v);
 
+    /// @brief set spacing of horizontal grid lines
+    /// @param v vector of distances between horizontal grid lines
     void setHorz(const std::vector<double> &h);
 
+    /// @brief set forbidden cells
+    /// @param f vector of col, row zero-based indices locating the forbidden cells
     void setForbid(const std::vector<std::pair<int, int>> &f)
     {
         myForbidden = f;
     }
+    /// @brief set start cell
+    /// @param s col,row sero-based indices of start cell
     void setStartCell(const std::pair<int, int> &s)
     {
         myStartCell = s;
     }
+
+    /// @brief set maximum size of cell combination
+    /// @param sz width,height
     void setMaxCombSize(const std::pair<double, double> &sz)
     {
         myMaxCombSize = sz;
     }
 
+    /// @brief enumerate the valid cell combinations
     void EnumerateCombinations();
 
+    /// @brief  draw the grid
+    /// @param S shape doing the drawings
     void draw(wex::shapes &S);
+
+private:
+    typedef std::vector<double> rect_ltrb_t;        /// left, top, right, bottom of rectangle
+    std::vector<double> myVert;                     /// vertical line spacing
+    std::vector<double> myHorz;                     /// horizontal line spacing
+    std::vector<std::pair<int, int>> myForbidden;   /// indices of forbidden cells
+    std::pair<int, int> myStartCell;                /// indices of start cell
+    std::pair<double, double> myMaxCombSize;        /// maximum valid combination size
+    std::vector<std::vector<std::pair<int, int>>> myListComb;   /// list of valid combinations
+
+    /// @brief left, top, right, bottom of cell
+    /// @param locationIndices 
+    /// @return 
+    rect_ltrb_t rectDim(const std::pair<int, int> &locationIndices);
+
+    /// @brief true if cell is forbidden
+    /// @param cell
+    /// @return
+    bool isForbidden(
+        const std::pair<int, int> &cell);
 
     /// @brief true if in completely inside out
     /// @param in
@@ -47,16 +73,14 @@ public:
         rect_ltrb_t in,
         rect_ltrb_t out);
 
-    bool isForbidden(
-        const std::pair<int, int> &cell);
-
+    /// @brief draw a rectangle
+    /// @param S 
+    /// @param scale 
+    /// @param r 
     static void drawRectangle(
         wex::shapes &S,
         double scale,
         const rect_ltrb_t &r);
-
-private:
-    rect_ltrb_t rectDim(const std::pair<int, int> &locationIndices);
 };
 
 class cGUI : public cStarterGUI
@@ -134,21 +158,10 @@ void cGrid::draw(wex::shapes &S)
                 (int)(scale * fDim[0]), (int)(scale * fDim[3])});
     }
 
-    // The SR rectangle
     auto startCellDim = rectDim(myStartCell);
     S.text("S",
            {(int)(scale * startCellDim[0] + 5),
             (int)(scale * startCellDim[1] + 5)});
-    // std::pair<double, double> startCellCenter;
-    // startCellCenter.first = 0.5 * (startCellDim[0] + startCellDim[2]);
-    // startCellCenter.second = 0.5 * (startCellDim[1] + startCellDim[3]);
-    // rect_ltrb_t SR(4);
-    // SR[0] = startCellCenter.first - myMaxCombSize.first;
-    // SR[1] = startCellCenter.second - myMaxCombSize.second;
-    // SR[2] = SR[0] + 2 * myMaxCombSize.first;
-    // SR[3] = SR[1] + 2 * myMaxCombSize.second;
-    // S.color(0x0000FF);
-    // drawRectangle(S, scale, SR);
 
     S.color(0xFF0000);
     int icomb = 0;
