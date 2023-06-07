@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include <wex.h>
+#include <propertyGrid.h>
 #include "cStarterGUI.h"
 
 class cGrid
@@ -118,6 +119,8 @@ public:
 
 private:
     cGrid myGrid;
+    wex::button& bnEnumerate;
     wex::button &nextComboButton;
     wex::label &lbCombo;
+    wex::propertyGrid& myPG;
 };
