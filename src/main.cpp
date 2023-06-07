@@ -45,25 +45,40 @@ public:
     /// @param S shape doing the drawings
     void draw(wex::shapes &S);
 
+    /// @brief move to next smaller combo
     void incCurCombo();
+
+    /// @brief display current combo
+    /// @param lbCombo 
+    /// @param S 
     void drawCombo(
         wex::label &lbCombo,
         wex::shapes &S);
 
+    /// @brief text description of current combo
+    /// @return 
+    std::string textCombo();
+
 private:
-    typedef std::vector<double> rect_ltrb_t;                  /// left, top, right, bottom of rectangle
-    std::vector<double> myVert;                               /// vertical line spacing
-    std::vector<double> myHorz;                               /// horizontal line spacing
-    std::vector<std::pair<int, int>> myForbidden;             /// indices of forbidden cells
-    std::pair<int, int> myStartCell;                          /// indices of start cell
-    std::pair<double, double> myMaxCombSize;                  /// maximum valid combination size
-    std::vector<std::vector<std::pair<int, int>>> myListComb; /// list of valid combinations
-    int myCurComb;
+    typedef std::vector<double> rect_ltrb_t;              /// left, top, right, bottom of rectangle
+    typedef std::pair<int, int> location_t;               /// col, row location indices
+    std::vector<double> myVert;                           /// vertical line spacing
+    std::vector<double> myHorz;                           /// horizontal line spacing
+    std::vector<std::pair<int, int>> myForbidden;         /// indices of forbidden cells
+    std::pair<int, int> myStartCell;                      /// indices of start cell
+    std::pair<double, double> myMaxCombSize;              /// maximum valid combination size
+    std::map<double, std::vector<location_t>> myMapCombo; /// map of valid cell combinations, keyed by total area
+    int myCurComb;                                        /// the current cell sombination
 
     /// @brief left, top, right, bottom of cell
     /// @param locationIndices
     /// @return
-    rect_ltrb_t rectDim(const std::pair<int, int> &locationIndices);
+    rect_ltrb_t rectDim(const location_t &locationIndices);
+
+    /// @brief area of a cell
+    /// @param locationIndices 
+    /// @return 
+    double area(const location_t &locationIndices);
 
     /// @brief true if cell is forbidden
     /// @param cell
@@ -127,7 +142,7 @@ public:
                 myGrid.incCurCombo();
                 fm.update();
             });
-        lbCombo.move(650, 100, 200, 100);
+        lbCombo.move(650, 100, 400, 100);
         lbCombo.text("");
 
         show();
@@ -164,9 +179,9 @@ void cGrid::setVert(const std::vector<double> &v)
 
 void cGrid::incCurCombo()
 {
-    myCurComb++;
-    if (myCurComb >= myListComb.size())
-        myCurComb = 0;
+    myCurComb--;
+    if (myCurComb < 0)
+        myCurComb = myMapCombo.size() - 1;
 }
 
 void cGrid::draw(wex::shapes &S)
@@ -201,24 +216,40 @@ void cGrid::drawCombo(
     wex::label &lbCombo,
     wex::shapes &S)
 {
-    lbCombo.text(std::to_string(myCurComb + 1) + " of " + std::to_string(myListComb.size()));
+    if (!myMapCombo.size())
+        return;
+    lbCombo.text(textCombo());
     S.color(0xFF0000);
-    for (auto &c : myListComb[myCurComb])
+    auto it = myMapCombo.cbegin();
+    std::advance(it, myCurComb);
+    for (auto &loc : it->second)
     {
-        drawRectangle(S, scale(), rectDim(c));
+        drawRectangle(S, scale(), rectDim(loc));
     }
 }
-
-std::string textCombo();
+std::string cGrid::textCombo()
+{
+    std::stringstream ss;
+    ss << myCurComb+1 << " of " << myMapCombo.size() << "\n";
+    auto it = myMapCombo.cbegin();
+    std::advance(it, myCurComb);
+    ss << "Area: " << it->first << " cells: ";
+    for (auto &loc : it->second)
+    {
+        ss << loc.first << " " << loc.second << ", ";
+    }
+    return ss.str();
+}
 
 void cGrid::EnumerateCombinations()
 {
+    myMapCombo.clear();
     auto startCellDim = rectDim(myStartCell);
 
     // loop E over cells
-    for (int rowE = 0; rowE < myHorz.size(); rowE++)
+    for (int rowE = 0; rowE < myHorz.size() - 1; rowE++)
     {
-        for (int colE = 0; colE < myVert.size(); colE++)
+        for (int colE = 0; colE < myVert.size() - 1; colE++)
         {
             // create rectangle E of maximum combination size with E cell at top left
             auto Ecell = rectDim(std::make_pair(colE, rowE));
@@ -233,26 +264,34 @@ void cGrid::EnumerateCombinations()
             std::vector<std::pair<int, int>> comb;
 
             // loop over cells
-            for (int row = 0; row < myHorz.size(); row++)
-                for (int col = 0; col < myHorz.size(); col++)
+            for (int row = 0; row < myHorz.size() - 1; row++)
+                for (int col = 0; col < myHorz.size() - 1; col++)
                 {
                     // if cell completely inside E and valid
-                    auto cell = rectDim(std::make_pair(col, row));
-                    if (isInside(cell, E) && (!isForbidden(std::make_pair(col, row))))
+                    auto pcr = std::make_pair(col, row);
+                    if (isInside(rectDim(pcr), E) && (!isForbidden(pcr)))
                     {
                         // add to current combination
-                        comb.push_back(std::make_pair(col, row));
+                        comb.push_back(pcr);
                     }
                 }
-            // add current combination to list
-            myListComb.push_back(comb);
+            // add current combination to map
+            double a = 0;
+            for (auto &l : comb)
+            {
+                a += area(l);
+            }
+            myMapCombo.insert(std::make_pair(a, comb));
+            std::cout << "insert " << myMapCombo.size() << "\n";
         }
     }
-    myCurComb = 0;
-    std::cout << myListComb.size() << " valid cell combinations found\n";
-    for (auto &comb : myListComb)
+
+    myCurComb = myMapCombo.size() - 1;
+
+    std::cout << myMapCombo.size() << " valid cell combinations found\n";
+    for (auto &comb : myMapCombo)
     {
-        for (auto &loc : comb)
+        for (auto &loc : comb.second)
         {
             std::cout << loc.first << " " << loc.second << ", ";
         }
@@ -295,14 +334,24 @@ bool cGrid::isForbidden(
     return false;
 }
 
-cGrid::rect_ltrb_t cGrid::rectDim(const std::pair<int, int> &locationIndices)
+cGrid::rect_ltrb_t cGrid::rectDim(const std::pair<int, int> &loc)
 {
+    if (0 > loc.first || loc.first > myVert.size() - 2 ||
+        0 > loc.second || loc.second > myHorz.size() - 2)
+        throw std::runtime_error(
+            "cGrid::rectDim bad location");
     rect_ltrb_t ret(4);
-    ret[0] = myVert[locationIndices.first];
-    ret[1] = myHorz[locationIndices.second];
-    ret[2] = myVert[locationIndices.first + 1];
-    ret[3] = myHorz[locationIndices.second + 1];
+    ret[0] = myVert[loc.first];
+    ret[1] = myHorz[loc.second];
+    ret[2] = myVert[loc.first + 1];
+    ret[3] = myHorz[loc.second + 1];
     return ret;
+}
+
+double cGrid::area(const location_t &locationIndices)
+{
+    auto d = rectDim(locationIndices);
+    return (d[2] - d[0]) * (d[3] - d[1]);
 }
 
 main()
