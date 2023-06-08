@@ -2,12 +2,14 @@
 
 cGUI::cGUI()
     : cStarterGUI(
-          "Starter",
+          "Cell Combiner",
           {50, 50, 1000, 700}),
       nextComboButton(wex::maker::make<wex::button>(fm)),
       lbCombo(wex::maker::make<wex::label>(fm)),
       myPG(wex::maker::make<wex::propertyGrid>(fm)),
-      bnEnumerate(wex::maker::make<wex::button>(fm))
+      bnEnumerate(wex::maker::make<wex::button>(fm)),
+      bnRead(wex::maker::make<wex::button>(fm)),
+      ebFile(wex::maker::make<wex::editbox>(fm))
 {
     myGrid.ConstructTest1();
 
@@ -19,7 +21,21 @@ cGUI::cGUI()
             myGrid.drawCombo(lbCombo, S);
         });
 
-    myPG.move({650, 20, 300, 300});
+    bnRead.move(650, 20,100,30);
+    bnRead.text("Read File");
+    bnRead.events().click(
+        [&]
+        {
+            myGrid.readFile(ebFile.text());
+            myGrid.EnumerateCombinations();
+            fm.update();
+        });
+    ebFile.move(770,20,200,30);
+    ebFile.text("../dat/test1.txt");
+
+
+
+    myPG.move({650, 70, 300, 200});
     myPG.labelWidth(200);
     myPG.string("Starter cell ( col,row)", "4,4");
     myPG.string("Max size (width,height)", "6,7");

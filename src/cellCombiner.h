@@ -13,6 +13,8 @@ class cGrid
 public:
     void ConstructTest1();
 
+    void readFile( const std::string& fname );
+
     /// @brief set spaciong of vertical grid lines
     /// @param v vector of distances between vertical grid lines
     void setVert(const std::vector<double> &v);
@@ -123,4 +125,6 @@ private:
     wex::button &nextComboButton;
     wex::label &lbCombo;
     wex::propertyGrid& myPG;
+    wex::button& bnRead;
+    wex::editbox& ebFile;
 };

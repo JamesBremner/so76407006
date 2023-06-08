@@ -11,8 +11,51 @@ void cGrid::ConstructTest1()
     EnumerateCombinations();
 }
 
+static std::vector<std::string> parseSSV(
+    const std::string &l)
+{
+    std::vector<std::string> token;
+    std::stringstream sst(l);
+    std::string a;
+    while (getline(sst, a, ' '))
+        token.push_back(a);
+
+    return token;
+}
+
+void cGrid::readFile( const std::string& fname )
+{
+    std::ifstream ifs( fname );
+    if(!ifs.is_open())
+        throw(
+            "Cannot open input file"        );
+    std::string line;
+    while( getline(ifs, line )) {
+        auto vtoken = parseSSV( line );
+        std::vector<double> vspace;
+        switch( vtoken[0][0] ) {
+
+            case 'h':case 'H':
+            for( int k = 1; k < vtoken.size(); k++ ) {
+                vspace.push_back(atof(vtoken[k].c_str()));
+            }
+            setHorz( vspace);
+            break;
+
+            case 'v':case 'V':
+            for( int k = 1; k < vtoken.size(); k++ ) {
+                vspace.push_back(atof(vtoken[k].c_str()));
+            }
+            setVert( vspace);
+            break;
+        }
+    }
+
+}
+
 void cGrid::setHorz(const std::vector<double> &h)
 {
+    myHorz.clear();
     double l = 0;
     for (double hv : h)
     {
@@ -24,6 +67,7 @@ void cGrid::setHorz(const std::vector<double> &h)
 
 void cGrid::setVert(const std::vector<double> &v)
 {
+    myVert.clear();
     double l = 0;
     for (double vv : v)
     {
