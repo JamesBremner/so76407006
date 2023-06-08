@@ -8,4 +8,6 @@ The cells in a combination must be adjacent to at least one other cell in the co
 
 ![image](https://github.com/JamesBremner/so76407006/assets/2046227/4927ea33-a1d8-42c9-9262-f2c22b132daf)
 
+Feature list https://github.com/JamesBremner/so76407006/wiki/Features
+
 
