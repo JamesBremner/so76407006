@@ -25,10 +25,8 @@ public:
 
     /// @brief set forbidden cells
     /// @param f vector of col, row zero-based indices locating the forbidden cells
-    void setForbid(const std::vector<std::pair<int, int>> &f)
-    {
-        myForbidden = f;
-    }
+    void setForbid(const std::vector<std::pair<int, int>> &f);
+
     /// @brief set start cell
     /// @param s col,row sero-based indices of start cell
     void setStartCell(const std::pair<int, int> &s)

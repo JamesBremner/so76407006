@@ -23,34 +23,47 @@ static std::vector<std::string> parseSSV(
     return token;
 }
 
-void cGrid::readFile( const std::string& fname )
+void cGrid::readFile(const std::string &fname)
 {
-    std::ifstream ifs( fname );
-    if(!ifs.is_open())
+    std::ifstream ifs(fname);
+    if (!ifs.is_open())
         throw(
-            "Cannot open input file"        );
+            "Cannot open input file");
+    myForbidden.clear();
     std::string line;
-    while( getline(ifs, line )) {
-        auto vtoken = parseSSV( line );
+    while (getline(ifs, line))
+    {
+        auto vtoken = parseSSV(line);
         std::vector<double> vspace;
-        switch( vtoken[0][0] ) {
+        switch (vtoken[0][0])
+        {
 
-            case 'h':case 'H':
-            for( int k = 1; k < vtoken.size(); k++ ) {
+        case 'h':
+        case 'H':
+            for (int k = 1; k < vtoken.size(); k++)
+            {
                 vspace.push_back(atof(vtoken[k].c_str()));
             }
-            setHorz( vspace);
+            setHorz(vspace);
             break;
 
-            case 'v':case 'V':
-            for( int k = 1; k < vtoken.size(); k++ ) {
+        case 'v':
+        case 'V':
+            for (int k = 1; k < vtoken.size(); k++)
+            {
                 vspace.push_back(atof(vtoken[k].c_str()));
             }
-            setVert( vspace);
+            setVert(vspace);
+            break;
+
+        case 'f':
+        case 'F':
+            setForbid({std::make_pair(
+                atoi(vtoken[1].c_str()),
+                atoi(vtoken[2].c_str()))});
             break;
         }
     }
-
 }
 
 void cGrid::setHorz(const std::vector<double> &h)
@@ -63,6 +76,12 @@ void cGrid::setHorz(const std::vector<double> &h)
         l += hv;
     }
     myHorz.push_back(l);
+}
+void cGrid::setForbid(const std::vector<std::pair<int, int>> &f)
+{
+    myForbidden.insert(
+        myForbidden.end(),
+        f.begin(), f.end());
 }
 
 void cGrid::setVert(const std::vector<double> &v)
