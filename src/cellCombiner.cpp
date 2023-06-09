@@ -288,12 +288,6 @@ bool cGrid::isConnected(
         g2D.extDim(col, row);
     }
 
-    // convert start cell to location in 2D grid
-    location_t relStart;
-    relStart.first = myStartCell.first - topleft.first;
-    relStart.second = myStartCell.second - topleft.second;
-    int indexStart = g2D.index(relStart.first, relStart.second);
-
     // loop over cells in combo, linking them to valid neighbours to right and below
     // no links to left and above because links are bidirectional
     for (auto &dst : comb)
@@ -301,31 +295,17 @@ bool cGrid::isConnected(
         int indexDst = g2D.index(
             dst.first - topleft.first,
             dst.second - topleft.second);
-
-        for (int col = dst.first; col <= dst.first + 1; col++)
+        for (int indexNeighbor : g2D.getOrthoNeighboursRightBelow(indexDst))
         {
-            for (int row = dst.second; row <= dst.second + 1; row++)
-            {
-                if (col == dst.first && row == dst.second)
-                    continue;
-                if (isForbidden(std::make_pair(col, row)))
-                    continue;
-                int indexNeighbor;
-                try
-                {
-                    indexNeighbor = g2D.index(
-                        col - topleft.first,
-                        row - topleft.second);
-                }
-                catch (...)
-                {
-                    // neighbour is outside enclosing rectangle
-                    continue;
-                }
+            int col, row;
+            g2D.coords(col, row, indexNeighbor);
+            if (!isForbidden(
+                    std::make_pair(
+                        col + topleft.first,
+                        row + topleft.second)))
                 g2D.addEdge(
                     indexDst,
                     indexNeighbor);
-            }
         }
     }
 
@@ -333,15 +313,18 @@ bool cGrid::isConnected(
     raven::graph::cGraph g;
     for (auto &e : g2D.getEdgesVertexIndex())
     {
-        g.add( e.first, e.second);
+        g.add(e.first, e.second);
     }
 
-    // check that every cell is reachable from start cell 
+    // check that every cell is reachable from start cell
+    int indexStart = g2D.index(
+        myStartCell.first - topleft.first,
+        myStartCell.second - topleft.second);
     for (auto &dst : comb)
     {
-        int indexDst =  g2D.index(
-            dst.first-topleft.first,
-            dst.second-topleft.second);
+        int indexDst = g2D.index(
+            dst.first - topleft.first,
+            dst.second - topleft.second);
         if (!path(
                  g,
                  indexStart,
