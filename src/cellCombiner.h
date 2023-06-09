@@ -87,7 +87,10 @@ private:
     /// @param cell
     /// @return
     bool isForbidden(
-        const std::pair<int, int> &cell);
+        const std::pair<int, int> &cell) const;
+
+    bool isConnected( 
+        const std::vector<location_t>& comb ) const;
 
     /// @brief true if in completely inside out
     /// @param in

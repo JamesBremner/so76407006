@@ -1,10 +1,10 @@
 #source file search paths
-VPATH = ./src 
+VPATH = ./src ../pathfinder/src
 
-	# compiler include search paths
+# compiler include search paths
 INCS = -I./include \
 	-I../windex/include \
-	-I../raven-set 
+	-I../pathfinder/src
 
 LIBS = \
 	-lgdiplus -lgdi32 -lcomdlg32 -lstdc++fs \
@@ -21,7 +21,9 @@ CCflags = -std=c++17 $(OPT) -D_mingw_
 # sources
 OBJ_starter = \
 	$(ODIR)/main.o \
-	$(ODIR)/cellCombiner.o
+	$(ODIR)/cellCombiner.o \
+	$(ODIR)/cGraph.o \
+	$(ODIR)/GraphTheory.o \
 
 ### COMPILE
 

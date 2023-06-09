@@ -1,4 +1,6 @@
 #include "cellCombiner.h"
+#include "cGrid2D.h"
+#include "graphTheory.h"
 
 void cGrid::ConstructTest1()
 {
@@ -163,6 +165,8 @@ std::string cGrid::textCombo()
 void cGrid::EnumerateCombinations()
 {
     myMapCombo.clear();
+    if (isForbidden(myStartCell))
+        return;
     auto startCellDim = rectDim(myStartCell);
 
     // loop E over cells
@@ -184,6 +188,7 @@ void cGrid::EnumerateCombinations()
 
             // loop over cells
             for (int row = 0; row < myHorz.size() - 1; row++)
+            {
                 for (int col = 0; col < myHorz.size() - 1; col++)
                 {
                     // if cell completely inside E and valid
@@ -194,6 +199,12 @@ void cGrid::EnumerateCombinations()
                         comb.push_back(pcr);
                     }
                 }
+            }
+
+            // check that combination is connected TID2
+            if (!isConnected(comb))
+                continue;
+
             // add current combination to map
             double a = 0;
             for (auto &l : comb)
@@ -245,12 +256,101 @@ bool cGrid::isInside(
 }
 
 bool cGrid::isForbidden(
-    const std::pair<int, int> &cell)
+    const std::pair<int, int> &cell) const
 {
     for (auto &f : myForbidden)
         if (f == cell)
             return true;
     return false;
+}
+
+bool cGrid::isConnected(
+    const std::vector<location_t> &comb) const
+{
+    // construct a 2D grid on the combo's enclosing rectangle
+    cGrid2D g2D;
+
+    // top left of enclosing rectangle
+    location_t topleft = std::make_pair(INT32_MAX, INT32_MAX);
+    for (auto &c : comb)
+    {
+        if (c.first < topleft.first)
+            topleft.first = c.first;
+        if (c.second < topleft.second)
+            topleft.second = c.second;
+    }
+
+    // dimensions of 2D grid
+    for (auto &c : comb)
+    {
+        int col = c.first - topleft.first;
+        int row = c.second - topleft.second;
+        g2D.extDim(col, row);
+    }
+
+    // convert start cell to location in 2D grid
+    location_t relStart;
+    relStart.first = myStartCell.first - topleft.first;
+    relStart.second = myStartCell.second - topleft.second;
+    int indexStart = g2D.index(relStart.first, relStart.second);
+
+    // loop over cells in combo, linking them to valid neighbours to right and below
+    // no links to left and above because links are bidirectional
+    for (auto &dst : comb)
+    {
+        int indexDst = g2D.index(
+            dst.first - topleft.first,
+            dst.second - topleft.second);
+
+        for (int col = dst.first; col <= dst.first + 1; col++)
+        {
+            for (int row = dst.second; row <= dst.second + 1; row++)
+            {
+                if (col == dst.first && row == dst.second)
+                    continue;
+                if (isForbidden(std::make_pair(col, row)))
+                    continue;
+                int indexNeighbor;
+                try
+                {
+                    indexNeighbor = g2D.index(
+                        col - topleft.first,
+                        row - topleft.second);
+                }
+                catch (...)
+                {
+                    // neighbour is outside enclosing rectangle
+                    continue;
+                }
+                g2D.addEdge(
+                    indexDst,
+                    indexNeighbor);
+            }
+        }
+    }
+
+    // Construct a vertex & edge graph from neighbour links
+    raven::graph::cGraph g;
+    for (auto &e : g2D.getEdgesVertexIndex())
+    {
+        g.add( e.first, e.second);
+    }
+
+    // check that every cell is reachable from start cell 
+    for (auto &dst : comb)
+    {
+        int indexDst =  g2D.index(
+            dst.first-topleft.first,
+            dst.second-topleft.second);
+        if (!path(
+                 g,
+                 indexStart,
+                 indexDst)
+                 .first.size())
+            return false;
+    }
+
+    return true;
 }
 
 cGrid::rect_ltrb_t cGrid::rectDim(const std::pair<int, int> &loc)
