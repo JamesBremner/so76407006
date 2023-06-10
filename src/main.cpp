@@ -33,11 +33,9 @@ cGUI::cGUI()
     ebFile.move(770,20,200,30);
     ebFile.text("../dat/test1.txt");
 
-
-
     myPG.move({650, 70, 300, 200});
     myPG.labelWidth(200);
-    myPG.string("Starter cell ( col,row)", "4,4");
+    myPG.string("Starter cell ( col,row)", "1,1");
     myPG.string("Max size (width,height)", "6,7");
 
     bnEnumerate.move(700, 350, 100, 30);

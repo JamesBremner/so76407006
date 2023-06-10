@@ -63,20 +63,26 @@ public:
     std::string textCombo();
 
 private:
-    typedef std::vector<double> rect_ltrb_t;              /// left, top, right, bottom of rectangle
+    typedef std::vector<double> rect_ltrb_t;              /// left, top, right, bottom of rectangle in user units
     typedef std::pair<int, int> location_t;               /// col, row location indices
-    std::vector<double> myVert;                           /// vertical line spacing
-    std::vector<double> myHorz;                           /// horizontal line spacing
-    std::vector<std::pair<int, int>> myForbidden;         /// indices of forbidden cells
-    std::pair<int, int> myStartCell;                      /// indices of start cell
+    std::vector<double> myVert;                           /// vertical line spacing in user units
+    std::vector<double> myHorz;                           /// horizontal line spacing in user units
+    std::vector<location_t> myForbidden;                  /// indices of forbidden cells
+    location_t myStartCell;                               /// indices of start cell
     std::pair<double, double> myMaxCombSize;              /// maximum valid combination size
     std::map<double, std::vector<location_t>> myMapCombo; /// map of valid cell combinations, keyed by total area
     int myCurComb;                                        /// the current cell sombination
 
-    /// @brief left, top, right, bottom of cell
+    /// @brief left, top, right, bottom of cell in user units from indices
     /// @param locationIndices
     /// @return
-    rect_ltrb_t rectDim(const location_t &locationIndices);
+    rect_ltrb_t rectDim(const location_t &locationIndices) const;
+
+    /// @brief topleft, bottomright cell indices completely inside rectangle in user indices
+    /// @param rect 
+    /// @return 
+    std::pair<location_t,location_t>
+    rectIndices( const  rect_ltrb_t& rect) const;
 
     /// @brief area of a cell
     /// @param locationIndices
@@ -89,8 +95,13 @@ private:
     bool isForbidden(
         const std::pair<int, int> &cell) const;
 
+    /// @brief True if combination is connected
+    /// @param comb combination
+    /// @param E enclosing rectangle, topright, bottomleft cell indices
+    /// @return 
     bool isConnected( 
-        const std::vector<location_t>& comb ) const;
+        const std::vector<location_t>& comb,
+        const std::pair<location_t,location_t>& E ) const;
 
     /// @brief true if in completely inside out
     /// @param in
@@ -108,6 +119,26 @@ private:
         wex::shapes &S,
         double scale,
         const rect_ltrb_t &r);
+
+    /// @brief get valid neighbours to right and below inside enclosing rectangle
+    /// @param cell find neighbours of this cell
+    /// @param leftTop of enclosing rectangle
+    /// @param rightBottom of enclosing rectangle
+    /// @return vector of neighbour indices
+    std::vector<location_t>
+    getOrthoNeighboursRightBelow(
+        const location_t& cell,
+        const location_t& leftTop,
+        const location_t& rightBottom ) const;
+
+    /// @brief count of cell moving along rows
+    /// @param loc cell locations row, col
+    /// @return count of cell
+    int getCellCount( const location_t& loc ) const
+    {
+        return 
+        loc.second* myVert.size() + loc.first;
+    }
 
     static double scale()
     {

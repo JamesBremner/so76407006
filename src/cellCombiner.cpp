@@ -1,5 +1,4 @@
 #include "cellCombiner.h"
-#include "cGrid2D.h"
 #include "graphTheory.h"
 
 void cGrid::ConstructTest1()
@@ -10,7 +9,7 @@ void cGrid::ConstructTest1()
     setStartCell({4, 4});
     setMaxCombSize({6, 7});
 
-    EnumerateCombinations();
+    //    EnumerateCombinations();
 }
 
 static std::vector<std::string> parseSSV(
@@ -127,10 +126,16 @@ void cGrid::draw(wex::shapes &S)
                 (int)(sc * fDim[0]), (int)(sc * fDim[3])});
     }
 
-    auto startCellDim = rectDim(myStartCell);
-    S.text("S",
-           {(int)(sc * startCellDim[0] + 5),
-            (int)(sc * startCellDim[1] + 5)});
+    try
+    {
+        auto startCellDim = rectDim(myStartCell);
+        S.text("S",
+               {(int)(sc * startCellDim[0] + 5),
+                (int)(sc * startCellDim[1] + 5)});
+    }
+    catch (...)
+    {
+    }
 }
 
 void cGrid::drawCombo(
@@ -167,7 +172,15 @@ void cGrid::EnumerateCombinations()
     myMapCombo.clear();
     if (isForbidden(myStartCell))
         return;
-    auto startCellDim = rectDim(myStartCell);
+    rect_ltrb_t startCellDim;
+    try
+    {
+        startCellDim = rectDim(myStartCell);
+    }
+    catch (...)
+    {
+        return;
+    }
 
     // loop E over cells
     for (int rowE = 0; rowE < myHorz.size() - 1; rowE++)
@@ -202,7 +215,7 @@ void cGrid::EnumerateCombinations()
             }
 
             // check that combination is connected TID2
-            if (!isConnected(comb))
+            if (!isConnected(comb, rectIndices(E)))
                 continue;
 
             // add current combination to map
@@ -265,70 +278,33 @@ bool cGrid::isForbidden(
 }
 
 bool cGrid::isConnected(
-    const std::vector<location_t> &comb) const
+    const std::vector<location_t> &comb,
+    const std::pair<location_t, location_t> &E) const
 {
-    // construct a 2D grid on the combo's enclosing rectangle
-    cGrid2D g2D;
-
-    // top left of enclosing rectangle
-    location_t topleft = std::make_pair(INT32_MAX, INT32_MAX);
-    for (auto &c : comb)
-    {
-        if (c.first < topleft.first)
-            topleft.first = c.first;
-        if (c.second < topleft.second)
-            topleft.second = c.second;
-    }
-
-    // dimensions of 2D grid
-    for (auto &c : comb)
-    {
-        int col = c.first - topleft.first;
-        int row = c.second - topleft.second;
-        g2D.extDim(col, row);
-    }
-
     // loop over cells in combo, linking them to valid neighbours to right and below
     // no links to left and above because links are bidirectional
+    raven::graph::cGraph g;
     for (auto &dst : comb)
     {
-        int indexDst = g2D.index(
-            dst.first - topleft.first,
-            dst.second - topleft.second);
-        for (int indexNeighbor : g2D.getOrthoNeighboursRightBelow(indexDst))
+        int dstCount = getCellCount(dst);
+        for (auto indexNeighbor : getOrthoNeighboursRightBelow(
+                 dst,
+                 E.first, E.second))
         {
-            int col, row;
-            g2D.coords(col, row, indexNeighbor);
-            if (!isForbidden(
-                    std::make_pair(
-                        col + topleft.first,
-                        row + topleft.second)))
-                g2D.addEdge(
-                    indexDst,
-                    indexNeighbor);
+            g.add(
+                dstCount,
+                getCellCount(indexNeighbor));
         }
     }
 
-    // Construct a vertex & edge graph from neighbour links
-    raven::graph::cGraph g;
-    for (auto &e : g2D.getEdgesVertexIndex())
-    {
-        g.add(e.first, e.second);
-    }
-
     // check that every cell is reachable from start cell
-    int indexStart = g2D.index(
-        myStartCell.first - topleft.first,
-        myStartCell.second - topleft.second);
+    int startCount = getCellCount(myStartCell);
     for (auto &dst : comb)
     {
-        int indexDst = g2D.index(
-            dst.first - topleft.first,
-            dst.second - topleft.second);
         if (!path(
                  g,
-                 indexStart,
-                 indexDst)
+                 startCount,
+                 getCellCount(dst))
                  .first.size())
             return false;
     }
@@ -336,7 +312,7 @@ bool cGrid::isConnected(
     return true;
 }
 
-cGrid::rect_ltrb_t cGrid::rectDim(const std::pair<int, int> &loc)
+cGrid::rect_ltrb_t cGrid::rectDim(const std::pair<int, int> &loc) const
 {
     if (0 > loc.first || loc.first > myVert.size() - 2 ||
         0 > loc.second || loc.second > myHorz.size() - 2)
@@ -350,8 +326,83 @@ cGrid::rect_ltrb_t cGrid::rectDim(const std::pair<int, int> &loc)
     return ret;
 }
 
+std::pair<cGrid::location_t, cGrid::location_t>
+cGrid::rectIndices(const rect_ltrb_t &rect) const
+{
+    std::pair<cGrid::location_t, cGrid::location_t> ret;
+    ret.first.first = INT_MAX;
+    ret.first.second = INT_MAX;
+    ret.second.first = 0;
+    ret.second.first = 0;
+    for (int row = 0; row < myHorz.size() - 1; row++)
+    {
+        for (int col = 0; col < myVert.size() - 1; col++)
+        {
+            if (isInside(rectDim(std::make_pair(col, row)), rect))
+            {
+                if (col < ret.first.first)
+                    ret.first.first = col;
+                if (row < ret.first.second)
+                    ret.first.second = row;
+                if (col > ret.second.first)
+                    ret.second.first = col;
+                if (row > ret.second.second)
+                    ret.second.second = row;
+            }
+        }
+    }
+    return ret;
+}
+
 double cGrid::area(const location_t &locationIndices)
 {
     auto d = rectDim(locationIndices);
     return (d[2] - d[0]) * (d[3] - d[1]);
+}
+
+std::vector<cGrid::location_t>
+cGrid::getOrthoNeighboursRightBelow(
+    const location_t &cell,
+    const location_t &leftTop,
+    const location_t &rightBottom) const
+{
+    std::vector<location_t> ret;
+    location_t n;
+    n.first = cell.first + 1;
+    n.second = cell.second;
+    if (!isForbidden(n))
+    {
+        if (n.first >= leftTop.first &&
+            n.second >= leftTop.second &&
+            n.first <= rightBottom.first &&
+            n.second <= rightBottom.second)
+        {
+            ret.push_back(n);
+        }
+    }
+    n.first = cell.first;
+    n.second = cell.second + 1;
+    if (!isForbidden(n))
+    {
+        if (n.first >= leftTop.first &&
+            n.second >= leftTop.second &&
+            n.first <= rightBottom.first &&
+            n.second <= rightBottom.second)
+        {
+            ret.push_back(n);
+        }
+    }
+    n.first = cell.first + 1;
+    n.second = cell.second + 1;
+    if (isForbidden(n))
+    {
+        if (n.first >= leftTop.first &&
+            n.second >= leftTop.second &&
+            n.first <= rightBottom.first &&
+            n.second <= rightBottom.second)
+        {
+            ret.push_back(n);
+        }
+    }
+    return ret;
 }
